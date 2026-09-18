@@ -26,3 +26,26 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.register('startFrontend') {
+	group = 'application'
+	description = 'Starts the Vite frontend dev server in the background'
+	doLast {
+		def npmCommand = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'npm.cmd' : 'npm'
+		def process = new ProcessBuilder(npmCommand, 'run', 'dev')
+				.directory(file('../frontend'))
+				.inheritIO()
+				.start()
+		println "Frontend dev server started (PID: ${process.pid()})"
+	}
+}
+
+tasks.named('bootRun') {
+	mustRunAfter 'startFrontend'
+}
+
+tasks.register('dev') {
+	group = 'application'
+	description = 'Starts the frontend dev server and the Spring Boot backend together'
+	dependsOn 'startFrontend', 'bootRun'
+}
