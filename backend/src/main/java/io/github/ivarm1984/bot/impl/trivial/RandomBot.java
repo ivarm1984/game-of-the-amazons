@@ -1,0 +1,22 @@
+package io.github.ivarm1984.bot.impl.trivial;
+
+import io.github.ivarm1984.bot.Bot;
+import io.github.ivarm1984.bot.BotInput;
+import io.github.ivarm1984.bot.BotMetadata;
+import io.github.ivarm1984.engine.Move;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
+@BotMetadata(id = "random", displayName = "Random Bot", difficulty = 1,
+        description = "Plays a uniformly random legal move.")
+@Component
+public class RandomBot implements Bot {
+
+    @Override
+    public Move decideMove(BotInput input) {
+        List<Move> moves = input.legalMoves();
+        return moves.get(ThreadLocalRandom.current().nextInt(moves.size()));
+    }
+}
