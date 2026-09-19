@@ -6,6 +6,7 @@ import io.github.ivarm1984.bot.BotInput;
 import io.github.ivarm1984.bot.BotRegistry;
 import io.github.ivarm1984.bot.Deadline;
 import io.github.ivarm1984.bot.RegisteredBot;
+import io.github.ivarm1984.bot.impl.heuristic.BoardEvaluator;
 import io.github.ivarm1984.engine.AmazonsGame;
 import io.github.ivarm1984.engine.GameResult;
 import io.github.ivarm1984.engine.GameState;
@@ -80,7 +81,8 @@ public class MatchRunner {
             }
 
             state = AmazonsGame.apply(state, outcome.move());
-            listener.onEvent(new MoveEvent(ply + 1, mover, outcome.move(), state.board(), state.sideToMove()));
+            int evaluation = BoardEvaluator.spectatorEvaluation(state.board(), PieceColor.WHITE);
+            listener.onEvent(new MoveEvent(ply + 1, mover, outcome.move(), state.board(), state.sideToMove(), evaluation));
         }
 
         GameResult aborted = new GameResult(GameStatus.DRAW, null, REASON_MAX_PLIES_EXCEEDED, state.moveNumber());

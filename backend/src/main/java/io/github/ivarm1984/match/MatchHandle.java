@@ -84,7 +84,8 @@ public final class MatchHandle {
                 event.mover().name(),
                 MoveDto.from(event.move()),
                 BoardDto.from(event.boardAfter()),
-                event.nextToMove().name());
+                event.nextToMove().name(),
+                event.evaluation());
     }
 
     private static GameOverEventDto toDto(MatchFinishedEvent event) {

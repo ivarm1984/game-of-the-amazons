@@ -79,6 +79,17 @@ public final class BoardEvaluator {
         return combined(board, sideToMove, mobilityWeight, queenTerritoryWeight, 1.0);
     }
 
+    /**
+     * Territory-only reading of the position, for display to a human spectator rather than as a
+     * search leaf value. {@link #mobilityDiff} counts full (queen-move, arrow-shot) combinations,
+     * not a small bounded number - on an open board it can run into the thousands, which would
+     * swamp a fixed-scale evaluation bar. Territory diffs are naturally bounded to
+     * &plusmn;(cells - 8), so this stays on a stable, readable scale across the whole game.
+     */
+    public static int spectatorEvaluation(Board board, PieceColor sideToMove) {
+        return combined(board, sideToMove, 0.0, 1.0, 1.0);
+    }
+
     /** 0.0 at the start of the game, approaching 1.0 as the board fills up with arrows. */
     public static double gamePhase(Board board) {
         int emptyCells = 0;

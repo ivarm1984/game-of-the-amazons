@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMatchStore } from '../stores/matchStore'
 import AmazonsBoard from '../components/AmazonsBoard.vue'
+import EvalBar from '../components/EvalBar.vue'
 import MoveList from '../components/MoveList.vue'
 
 const route = useRoute()
@@ -47,7 +48,10 @@ onUnmounted(() => {
       </div>
     </div>
     <div class="layout">
-      <AmazonsBoard :board="matchStore.board" :last-move="matchStore.lastMove" :anim="matchStore.anim" />
+      <div class="board-column">
+        <EvalBar :evaluation="matchStore.evaluation" />
+        <AmazonsBoard :board="matchStore.board" :last-move="matchStore.lastMove" :anim="matchStore.anim" />
+      </div>
       <MoveList :moves="matchStore.moves" />
     </div>
   </div>
@@ -68,6 +72,12 @@ onUnmounted(() => {
   display: flex;
   gap: 32px;
   margin-top: 16px;
+  align-items: flex-start;
+}
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   align-items: flex-start;
 }
 .toolbar {

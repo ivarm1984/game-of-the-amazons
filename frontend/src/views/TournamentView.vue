@@ -5,6 +5,7 @@ import { useTournamentStore } from '../stores/tournamentStore'
 import { useMatchStore } from '../stores/matchStore'
 import { useBotsStore } from '../stores/botsStore'
 import AmazonsBoard from '../components/AmazonsBoard.vue'
+import EvalBar from '../components/EvalBar.vue'
 import MoveList from '../components/MoveList.vue'
 import EloChart from '../components/EloChart.vue'
 import { colorMapFor } from '../utils/botColors'
@@ -96,6 +97,7 @@ function onShowAnimationsChange(event: Event) {
           <span class="bot-swatch" :style="{ background: colorFor(tournamentStore.currentBlackBotId) }"></span>
           <strong>{{ nameFor(tournamentStore.currentBlackBotId) }}</strong> (black)
         </p>
+        <EvalBar :evaluation="matchStore.evaluation" />
         <div class="board-wrap">
           <AmazonsBoard :board="matchStore.board" :last-move="matchStore.lastMove" :anim="matchStore.anim" />
           <div v-if="matchStore.result" class="result-overlay">

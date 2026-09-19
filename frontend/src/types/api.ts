@@ -31,6 +31,8 @@ export interface MoveEventDto {
   move: MoveDto
   board: BoardDto
   nextToMove: 'WHITE' | 'BLACK'
+  /** Static position evaluation after this move, always from White's point of view (positive favors White). */
+  evaluation: number
 }
 
 export interface GameResultDto {

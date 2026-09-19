@@ -78,6 +78,8 @@ function moverChar(mover: 'WHITE' | 'BLACK'): string {
 interface MatchState {
   matchId: string | null
   board: BoardDto | null
+  /** Static evaluation of the currently displayed board, from White's point of view. Kept in step with `board` (not the queue), so it settles exactly when the position it describes appears on screen. */
+  evaluation: number
   moves: MoveEventDto[]
   status: 'idle' | 'connecting' | 'in_progress' | 'finished'
   result: GameResultDto | null
@@ -99,6 +101,7 @@ export const useMatchStore = defineStore('match', {
   state: (): MatchState => ({
     matchId: null,
     board: null,
+    evaluation: 0,
     moves: [],
     status: 'idle',
     result: null,
@@ -122,6 +125,7 @@ export const useMatchStore = defineStore('match', {
       this.disconnect()
       this.matchId = matchId
       this.board = STARTING_BOARD
+      this.evaluation = 0
       this.moves = []
       this.result = null
       this.queue = []
@@ -169,6 +173,7 @@ export const useMatchStore = defineStore('match', {
         clearTimeout(this.playbackTimer)
         this.playbackTimer = null
         this.board = this.inFlightEvent.board
+        this.evaluation = this.inFlightEvent.evaluation
         this.moves.push(this.inFlightEvent)
         this.anim = null
         this.inFlightEvent = null
@@ -209,6 +214,7 @@ export const useMatchStore = defineStore('match', {
       // the viewer wants to catch up: apply it in one step.
       if (this.speed === 'fast' || !this.board) {
         this.board = event.board
+        this.evaluation = event.evaluation
         this.moves.push(event)
         this.anim = null
         if (this.queue.length > 0) this.ensureTicking()
@@ -231,6 +237,7 @@ export const useMatchStore = defineStore('match', {
 
         this.playbackTimer = window.setTimeout(() => {
           this.board = event.board
+          this.evaluation = event.evaluation
           this.anim = null
           this.inFlightEvent = null
           this.moves.push(event)
