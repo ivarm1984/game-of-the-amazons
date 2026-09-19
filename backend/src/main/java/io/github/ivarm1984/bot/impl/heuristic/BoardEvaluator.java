@@ -66,6 +66,34 @@ public final class BoardEvaluator {
         return (int) Math.round(score);
     }
 
+    /**
+     * {@link #combined} with weights that shift as the game progresses instead of staying fixed:
+     * mobility matters more on an open board, queen territory more once queens are boxed into their
+     * own regions as arrows accumulate. Amazons' classic game-phase-aware evaluation, shared by every
+     * search bot that wants it rather than a flat weighting.
+     */
+    public static int phaseAwareCombined(Board board, PieceColor sideToMove) {
+        double phase = gamePhase(board);
+        double mobilityWeight = 1.5 - phase;
+        double queenTerritoryWeight = 1.0 + 2.5 * phase;
+        return combined(board, sideToMove, mobilityWeight, queenTerritoryWeight, 1.0);
+    }
+
+    /** 0.0 at the start of the game, approaching 1.0 as the board fills up with arrows. */
+    public static double gamePhase(Board board) {
+        int emptyCells = 0;
+        for (int row = 0; row < Board.SIZE; row++) {
+            for (int col = 0; col < Board.SIZE; col++) {
+                if (board.at(row, col) == Board.EMPTY) {
+                    emptyCells++;
+                }
+            }
+        }
+        int emptyCellsAtStart = Board.SIZE * Board.SIZE - 8;
+        double filled = 1.0 - ((double) emptyCells / emptyCellsAtStart);
+        return Math.max(0.0, Math.min(1.0, filled));
+    }
+
     private static int territoryDiff(int[] mine, int[] theirs) {
         int mineCloser = 0;
         int theirsCloser = 0;

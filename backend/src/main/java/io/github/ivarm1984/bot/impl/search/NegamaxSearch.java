@@ -122,8 +122,11 @@ public final class NegamaxSearch {
      * alongside it) rather than inside the sort comparator - re-evaluating on
      * every comparison would turn an O(n) sweep into O(n log n) evaluator
      * calls, which is far too slow against Amazons' huge branching factor.
+     *
+     * <p>Package-private rather than private: {@link TranspositionSearch} reuses it for its own
+     * root move ordering rather than duplicating this logic.
      */
-    private static List<Move> orderByStaticEval(Board board, PieceColor mover, List<Move> moves, Evaluator evaluator) {
+    static List<Move> orderByStaticEval(Board board, PieceColor mover, List<Move> moves, Evaluator evaluator) {
         List<ScoredMove> scored = new ArrayList<>(moves.size());
         for (Move move : moves) {
             int score = evaluator.evaluate(board.applyMove(move, mover), mover);
