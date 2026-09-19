@@ -73,6 +73,9 @@ const nextGameDisabled = computed(
 function onAutoplayChange(event: Event) {
   tournamentStore.setAutoplay((event.target as HTMLInputElement).checked)
 }
+function onShowAnimationsChange(event: Event) {
+  matchStore.setSpeed((event.target as HTMLInputElement).checked ? 'spectate' : 'fast')
+}
 </script>
 
 <template>
@@ -110,6 +113,14 @@ function onAutoplayChange(event: Event) {
           <label class="autoplay-toggle">
             <input type="checkbox" :checked="tournamentStore.autoplay" @change="onAutoplayChange" />
             Autoplay next game
+          </label>
+          <label class="autoplay-toggle">
+            <input
+              type="checkbox"
+              :checked="matchStore.speed === 'spectate'"
+              @change="onShowAnimationsChange"
+            />
+            Show animations
           </label>
         </div>
         <MoveList :moves="matchStore.moves" />
