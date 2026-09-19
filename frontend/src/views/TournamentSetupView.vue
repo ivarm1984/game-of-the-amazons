@@ -9,6 +9,7 @@ const botsStore = useBotsStore()
 const selectedBotIds = ref<Set<string>>(new Set())
 const gamesPerPairing = ref(2)
 const softMoveBudgetMs = ref(3000)
+const maxParallelGames = ref(4)
 const starting = ref(false)
 const error = ref('')
 
@@ -29,7 +30,9 @@ const pairingCount = computed(() => {
   return (n * (n - 1)) / 2
 })
 const totalGames = computed(() => pairingCount.value * gamesPerPairing.value)
-const canStart = computed(() => selectedBotIds.value.size >= 2 && gamesPerPairing.value >= 1)
+const canStart = computed(
+  () => selectedBotIds.value.size >= 2 && gamesPerPairing.value >= 1 && maxParallelGames.value >= 1,
+)
 
 async function start() {
   error.value = ''
@@ -39,6 +42,7 @@ async function start() {
       botIds: [...selectedBotIds.value],
       gamesPerPairing: gamesPerPairing.value,
       softMoveBudgetMs: softMoveBudgetMs.value,
+      maxParallelGames: maxParallelGames.value,
     })
     router.push(`/tournament/${tournamentId}`)
   } catch (e) {
@@ -74,6 +78,10 @@ async function start() {
       <label class="option">
         Per-move time budget (ms)
         <input v-model.number="softMoveBudgetMs" type="number" min="100" step="100" />
+      </label>
+      <label class="option">
+        Games in parallel
+        <input v-model.number="maxParallelGames" type="number" min="1" step="1" />
       </label>
     </div>
 

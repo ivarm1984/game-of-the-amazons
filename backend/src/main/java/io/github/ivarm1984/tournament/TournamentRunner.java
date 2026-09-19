@@ -15,18 +15,34 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
- * Runs a round-robin tournament one game at a time: every bot plays every
- * other bot {@code gamesPerPairing} times, alternating colors, in a shuffled
- * play order (see {@link #buildSchedule}) so pairings interleave rather than
- * playing out one full pairing before the next. Each game is a normal match
- * (registered with {@link MatchRegistry} so it can be spectated at
- * /api/matches/{id}/stream exactly like a standalone match) run synchronously
- * on the caller's thread, so games are strictly sequential and the tournament
- * event stream always reflects "what's happening right now". Elo ratings
- * start at {@link Elo#STARTING_RATING} and are updated after each game in
- * play order.
+ * Runs a round-robin tournament: every bot plays every other bot
+ * {@code gamesPerPairing} times, alternating colors, in a shuffled play order
+ * (see {@link #buildSchedule}) so pairings interleave rather than playing out
+ * one full pairing before the next. Each game is a normal match (registered
+ * with {@link MatchRegistry} so it can be spectated at
+ * /api/matches/{id}/stream exactly like a standalone match).
+ *
+ * <p>Up to {@link TournamentConfig#maxParallelGames} games are computed
+ * concurrently on a fixed worker pool, since a single game is turn-based and
+ * only ever keeps one CPU core busy at a time - running several games side by
+ * side is what actually spreads work across the machine's cores. {@code
+ * game-started}
+ * events fire as each worker picks up its game, which - because a fixed pool
+ * pulls queued tasks in submission (i.e. schedule) order - still arrives in
+ * schedule order even though several fire in quick succession. Elo ratings,
+ * however, are only ever updated by the single sequencing loop at the bottom
+ * of {@link #run}, which walks the schedule in order and blocks on each
+ * game's result before applying it: this guarantees {@code game-finished}
+ * standings snapshots are always "as of exactly this point in schedule
+ * order", never contaminated by a later game that happened to finish first,
+ * which matters because the frontend replays games strictly in schedule
+ * order and must not see a future game's effect on standings early.
  */
 @Component
 public class TournamentRunner {
@@ -48,19 +64,47 @@ public class TournamentRunner {
         }
         listener.onEvent(new ScheduleEvent(schedule, sortedStandings(standings)));
 
-        for (ScheduledGame game : schedule) {
-            String matchId = UUID.randomUUID().toString();
-            MatchHandle matchHandle = matchRegistry.createHandle(matchId);
-            listener.onEvent(new GameStartedEvent(game.index(), matchId, game.whiteBotId(), game.blackBotId()));
+        int parallelism = Math.max(1, Math.min(config.maxParallelGames(),
+                Math.min(schedule.size(), Runtime.getRuntime().availableProcessors())));
+        ExecutorService gameExecutor = Executors.newFixedThreadPool(parallelism);
+        try {
+            List<Future<MatchResult>> futures = new ArrayList<>(schedule.size());
+            for (ScheduledGame game : schedule) {
+                String matchId = UUID.randomUUID().toString();
+                MatchHandle matchHandle = matchRegistry.createHandle(matchId);
+                futures.add(gameExecutor.submit(() -> playGame(config, game, matchId, matchHandle, listener)));
+            }
 
-            MatchConfig matchConfig = new MatchConfig(matchId, game.whiteBotId(), game.blackBotId(), config.softMoveBudget());
-            MatchResult matchResult = matchRunner.runSync(matchConfig, matchHandle::publish);
-
-            applyResult(standings, game, matchResult.result());
-            listener.onEvent(new GameFinishedEvent(game.index(), matchId, matchResult.result(), sortedStandings(standings)));
+            for (int i = 0; i < schedule.size(); i++) {
+                ScheduledGame game = schedule.get(i);
+                MatchResult matchResult = await(futures.get(i));
+                applyResult(standings, game, matchResult.result());
+                listener.onEvent(new GameFinishedEvent(
+                        game.index(), matchResult.matchId(), matchResult.result(), sortedStandings(standings)));
+            }
+        } finally {
+            gameExecutor.shutdown();
         }
 
         listener.onEvent(new TournamentFinishedEvent(sortedStandings(standings)));
+    }
+
+    private MatchResult playGame(TournamentConfig config, ScheduledGame game, String matchId,
+                                  MatchHandle matchHandle, TournamentEventListener listener) {
+        listener.onEvent(new GameStartedEvent(game.index(), matchId, game.whiteBotId(), game.blackBotId()));
+        MatchConfig matchConfig = new MatchConfig(matchId, game.whiteBotId(), game.blackBotId(), config.softMoveBudget());
+        return matchRunner.runSync(matchConfig, matchHandle::publish);
+    }
+
+    private static MatchResult await(Future<MatchResult> future) {
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("tournament interrupted while waiting for a game", e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException("tournament game failed", e.getCause());
+        }
     }
 
     private void applyResult(Map<String, Standing> standings, ScheduledGame game, GameResult result) {

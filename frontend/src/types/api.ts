@@ -64,6 +64,7 @@ export interface CreateTournamentRequest {
   botIds: string[]
   gamesPerPairing?: number
   softMoveBudgetMs?: number
+  maxParallelGames?: number
 }
 
 export interface CreateTournamentResponse {

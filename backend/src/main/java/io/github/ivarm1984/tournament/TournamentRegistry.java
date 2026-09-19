@@ -32,13 +32,17 @@ public class TournamentRegistry {
         this.botRegistry = botRegistry;
     }
 
-    public String startTournament(List<String> botIds, int gamesPerPairing, Duration softMoveBudget) {
+    public String startTournament(List<String> botIds, int gamesPerPairing, Duration softMoveBudget,
+                                   int maxParallelGames) {
         Set<String> distinctBotIds = new HashSet<>(botIds);
         if (distinctBotIds.size() < 2) {
             throw new IllegalArgumentException("a tournament needs at least 2 distinct bots");
         }
         if (gamesPerPairing < 1) {
             throw new IllegalArgumentException("gamesPerPairing must be at least 1");
+        }
+        if (maxParallelGames < 1) {
+            throw new IllegalArgumentException("maxParallelGames must be at least 1");
         }
         for (String botId : distinctBotIds) {
             if (botRegistry.find(botId).isEmpty()) {
@@ -49,7 +53,8 @@ public class TournamentRegistry {
         String tournamentId = UUID.randomUUID().toString();
         TournamentHandle handle = new TournamentHandle();
         handles.put(tournamentId, handle);
-        TournamentConfig config = new TournamentConfig(tournamentId, List.copyOf(botIds), gamesPerPairing, softMoveBudget);
+        TournamentConfig config = new TournamentConfig(
+                tournamentId, List.copyOf(botIds), gamesPerPairing, softMoveBudget, maxParallelGames);
         tournamentExecutor.submit(() -> tournamentRunner.run(config, handle::publish));
         return tournamentId;
     }

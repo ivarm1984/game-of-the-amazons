@@ -18,6 +18,7 @@ public class TournamentController {
 
     private static final Duration DEFAULT_SOFT_MOVE_BUDGET = Duration.ofSeconds(3);
     private static final int DEFAULT_GAMES_PER_PAIRING = 2;
+    private static final int DEFAULT_MAX_PARALLEL_GAMES = 4;
 
     private final TournamentRegistry tournamentRegistry;
 
@@ -25,7 +26,8 @@ public class TournamentController {
         this.tournamentRegistry = tournamentRegistry;
     }
 
-    public record CreateTournamentRequest(List<String> botIds, Integer gamesPerPairing, Long softMoveBudgetMs) {
+    public record CreateTournamentRequest(
+            List<String> botIds, Integer gamesPerPairing, Long softMoveBudgetMs, Integer maxParallelGames) {
     }
 
     public record CreateTournamentResponse(String tournamentId) {
@@ -37,7 +39,9 @@ public class TournamentController {
         Duration budget = request.softMoveBudgetMs() != null
                 ? Duration.ofMillis(request.softMoveBudgetMs())
                 : DEFAULT_SOFT_MOVE_BUDGET;
-        String tournamentId = tournamentRegistry.startTournament(request.botIds(), gamesPerPairing, budget);
+        int maxParallelGames = request.maxParallelGames() != null ? request.maxParallelGames() : DEFAULT_MAX_PARALLEL_GAMES;
+        String tournamentId =
+                tournamentRegistry.startTournament(request.botIds(), gamesPerPairing, budget, maxParallelGames);
         return new CreateTournamentResponse(tournamentId);
     }
 
