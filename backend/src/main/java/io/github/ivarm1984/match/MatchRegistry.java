@@ -35,6 +35,18 @@ public class MatchRegistry {
         return matchId;
     }
 
+    /**
+     * Registers a handle for a match the caller will run itself (e.g. a
+     * tournament, which runs games one at a time on its own worker thread but
+     * still wants each game spectatable through the ordinary /matches/{id}/stream
+     * endpoint).
+     */
+    public MatchHandle createHandle(String matchId) {
+        MatchHandle handle = new MatchHandle();
+        handles.put(matchId, handle);
+        return handle;
+    }
+
     public MatchHandle get(String matchId) {
         MatchHandle handle = handles.get(matchId);
         if (handle == null) {

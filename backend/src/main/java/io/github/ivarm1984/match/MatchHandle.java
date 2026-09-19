@@ -9,6 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -38,17 +39,30 @@ public final class MatchHandle {
 
     public synchronized SseEmitter subscribe() {
         SseEmitter emitter = new SseEmitter(0L);
+        if (finished) {
+            // A match that already finished by the time this request landed (routine
+            // for near-instant bot pairings, e.g. in a tournament) must not be
+            // replayed-and-completed synchronously here: emitter.complete() before
+            // this method returns the emitter to Spring MVC races the container's
+            // async request lifecycle and can wedge the connection (observed as a
+            // Tomcat CoyoteAdapter$RecycleRequiredException under rapid-fire matches).
+            // Deferring lets the response commit first.
+            List<MatchEvent> backlog = List.copyOf(events);
+            CompletableFuture.runAsync(() -> {
+                for (MatchEvent event : backlog) {
+                    send(emitter, event);
+                }
+                emitter.complete();
+            });
+            return emitter;
+        }
         for (MatchEvent event : events) {
             send(emitter, event);
         }
-        if (finished) {
-            emitter.complete();
-        } else {
-            subscribers.add(emitter);
-            emitter.onCompletion(() -> subscribers.remove(emitter));
-            emitter.onTimeout(() -> subscribers.remove(emitter));
-            emitter.onError(e -> subscribers.remove(emitter));
-        }
+        subscribers.add(emitter);
+        emitter.onCompletion(() -> subscribers.remove(emitter));
+        emitter.onTimeout(() -> subscribers.remove(emitter));
+        emitter.onError(e -> subscribers.remove(emitter));
         return emitter;
     }
 

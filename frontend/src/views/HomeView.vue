@@ -12,6 +12,9 @@ onMounted(() => botsStore.load())
     <p>
       <RouterLink to="/match/setup">Start a head-to-head match ▸</RouterLink>
     </p>
+    <p>
+      <RouterLink to="/tournament/setup">Run a tournament ▸</RouterLink>
+    </p>
     <h2>Bot catalog</h2>
     <table>
       <thead>

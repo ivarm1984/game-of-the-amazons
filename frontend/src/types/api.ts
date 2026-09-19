@@ -44,3 +44,51 @@ export interface GameOverEventDto {
   result: GameResultDto
   finalBoard: BoardDto
 }
+
+export interface ScheduledGameDto {
+  index: number
+  whiteBotId: string
+  blackBotId: string
+}
+
+export interface StandingDto {
+  botId: string
+  elo: number
+  wins: number
+  losses: number
+  draws: number
+  gamesPlayed: number
+}
+
+export interface CreateTournamentRequest {
+  botIds: string[]
+  gamesPerPairing?: number
+  softMoveBudgetMs?: number
+}
+
+export interface CreateTournamentResponse {
+  tournamentId: string
+}
+
+export interface ScheduleEventDto {
+  games: ScheduledGameDto[]
+  standings: StandingDto[]
+}
+
+export interface GameStartedEventDto {
+  gameIndex: number
+  matchId: string
+  whiteBotId: string
+  blackBotId: string
+}
+
+export interface GameFinishedEventDto {
+  gameIndex: number
+  matchId: string
+  result: GameResultDto
+  standings: StandingDto[]
+}
+
+export interface TournamentFinishedEventDto {
+  standings: StandingDto[]
+}
