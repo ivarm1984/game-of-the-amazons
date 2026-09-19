@@ -2,6 +2,7 @@ package io.github.ivarm1984.bot;
 
 import io.github.ivarm1984.bot.impl.heuristic.GreedyMobilityBot;
 import io.github.ivarm1984.bot.impl.heuristic.TerritoryBot;
+import io.github.ivarm1984.bot.impl.mcts.InformedMonteCarloBot;
 import io.github.ivarm1984.bot.impl.mcts.MonteCarloBot;
 import io.github.ivarm1984.bot.impl.search.AlphaBetaMasterBot;
 import io.github.ivarm1984.bot.impl.search.AlphaBetaTranspositionBot;
@@ -40,7 +41,7 @@ class AllBotsPlayCleanlyTest {
         return Stream.of(
                 "random", "first-move", "greedy-mobility", "territory",
                 "minimax-mobility", "minimax-territory", "minimax-king-distance",
-                "iterative-deepening-combined", "mcts", "alpha-beta-master", "alpha-beta-tt");
+                "iterative-deepening-combined", "mcts", "mcts-informed", "alpha-beta-master", "alpha-beta-tt");
     }
 
     @ParameterizedTest
@@ -59,8 +60,8 @@ class AllBotsPlayCleanlyTest {
         BotRegistry registry = new BotRegistry(List.of(
                 new RandomBot(), new FirstMoveBot(), new GreedyMobilityBot(), new TerritoryBot(),
                 new MinimaxMobilityBot(), new MinimaxTerritoryBot(), new MinimaxKingDistanceBot(),
-                new IterativeDeepeningCombinedBot(), new MonteCarloBot(), new AlphaBetaMasterBot(),
-                new AlphaBetaTranspositionBot()));
+                new IterativeDeepeningCombinedBot(), new MonteCarloBot(), new InformedMonteCarloBot(),
+                new AlphaBetaMasterBot(), new AlphaBetaTranspositionBot()));
         MatchRunner runner = new MatchRunner(registry);
         MatchConfig config = new MatchConfig("smoke-" + whiteId + "-vs-" + blackId, whiteId, blackId, TIGHT_BUDGET);
         return runner.runSync(config);
