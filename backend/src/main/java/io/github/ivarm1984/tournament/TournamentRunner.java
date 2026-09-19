@@ -32,17 +32,22 @@ import java.util.concurrent.Future;
  * concurrently on a fixed worker pool, since a single game is turn-based and
  * only ever keeps one CPU core busy at a time - running several games side by
  * side is what actually spreads work across the machine's cores. {@code
- * game-started}
- * events fire as each worker picks up its game, which - because a fixed pool
- * pulls queued tasks in submission (i.e. schedule) order - still arrives in
- * schedule order even though several fire in quick succession. Elo ratings,
- * however, are only ever updated by the single sequencing loop at the bottom
- * of {@link #run}, which walks the schedule in order and blocks on each
- * game's result before applying it: this guarantees {@code game-finished}
- * standings snapshots are always "as of exactly this point in schedule
- * order", never contaminated by a later game that happened to finish first,
- * which matters because the frontend replays games strictly in schedule
- * order and must not see a future game's effect on standings early.
+ * game-started} events are emitted from the single-threaded submission loop
+ * at the top of {@link #run}, in schedule order, rather than from inside
+ * {@link #playGame} on a worker thread: a fixed pool only guarantees tasks
+ * are *dequeued* in submission order, not that two workers which dequeued
+ * games N and N+1 then reach their first statement in that same order, so
+ * emitting from the worker threads let {@code game-started} events (and
+ * therefore the frontend's spectate queue and Elo chart, which trust
+ * arrival order to be schedule order) occasionally arrive out of order once
+ * more than one worker was in play. Elo ratings are similarly only ever
+ * updated by the single sequencing loop at the bottom of {@link #run}, which
+ * walks the schedule in order and blocks on each game's result before
+ * applying it: this guarantees {@code game-finished} standings snapshots are
+ * always "as of exactly this point in schedule order", never contaminated by
+ * a later game that happened to finish first, which matters because the
+ * frontend replays games strictly in schedule order and must not see a
+ * future game's effect on standings early.
  */
 @Component
 public class TournamentRunner {
@@ -72,7 +77,8 @@ public class TournamentRunner {
             for (ScheduledGame game : schedule) {
                 String matchId = UUID.randomUUID().toString();
                 MatchHandle matchHandle = matchRegistry.createHandle(matchId);
-                futures.add(gameExecutor.submit(() -> playGame(config, game, matchId, matchHandle, listener)));
+                listener.onEvent(new GameStartedEvent(game.index(), matchId, game.whiteBotId(), game.blackBotId()));
+                futures.add(gameExecutor.submit(() -> playGame(config, game, matchId, matchHandle)));
             }
 
             for (int i = 0; i < schedule.size(); i++) {
@@ -90,8 +96,7 @@ public class TournamentRunner {
     }
 
     private MatchResult playGame(TournamentConfig config, ScheduledGame game, String matchId,
-                                  MatchHandle matchHandle, TournamentEventListener listener) {
-        listener.onEvent(new GameStartedEvent(game.index(), matchId, game.whiteBotId(), game.blackBotId()));
+                                  MatchHandle matchHandle) {
         MatchConfig matchConfig = new MatchConfig(matchId, game.whiteBotId(), game.blackBotId(), config.softMoveBudget());
         return matchRunner.runSync(matchConfig, matchHandle::publish);
     }
