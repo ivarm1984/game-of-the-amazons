@@ -29,6 +29,15 @@ const SPECTATE_TIMING: Partial<PlaybackTiming> = {
 
 const AUTOPLAY_STORAGE_KEY = 'amazons.tournamentAutoplay'
 
+/**
+ * How long the finished board (and its winner overlay) stays on screen before autoplay tears it
+ * down and connects to the next game. Without this, tryFinalize used to advance in the same tick
+ * the result arrived, so a game that had just been settling on its final position for a beat would
+ * suddenly vanish - "abrupt" from a viewer's perspective. Manual mode (autoplay off) already holds
+ * on the finished board indefinitely, waiting for a "Next game" click, so it doesn't need this.
+ */
+const POST_GAME_PAUSE_MS = 1800
+
 function loadStoredAutoplay(): boolean {
   try {
     return localStorage.getItem(AUTOPLAY_STORAGE_KEY) === 'true'
@@ -83,6 +92,8 @@ interface TournamentState {
   awaitingResultGameIndex: number | null
   /** Final standings from the 'finished' tournament event, held back until every queued game has finished spectating. */
   pendingFinalStandings: StandingDto[] | null
+  /** Handle for the pending post-game pause (see POST_GAME_PAUSE_MS), so disconnect() can cancel it. */
+  postGameTimer: number | null
 }
 
 export const useTournamentStore = defineStore('tournament', {
@@ -106,6 +117,7 @@ export const useTournamentStore = defineStore('tournament', {
     pendingResults: new Map(),
     awaitingResultGameIndex: null,
     pendingFinalStandings: null,
+    postGameTimer: null,
   }),
   getters: {
     totalGames: (state) => state.schedule.length,
@@ -131,6 +143,10 @@ export const useTournamentStore = defineStore('tournament', {
       this.pendingResults = new Map()
       this.awaitingResultGameIndex = null
       this.pendingFinalStandings = null
+      if (this.postGameTimer !== null) {
+        clearTimeout(this.postGameTimer)
+        this.postGameTimer = null
+      }
 
       this.unsubscribe = subscribeToTournament(tournamentId, {
         onSchedule: (event) => {
@@ -166,6 +182,10 @@ export const useTournamentStore = defineStore('tournament', {
       this.pendingResults = new Map()
       this.awaitingResultGameIndex = null
       this.pendingFinalStandings = null
+      if (this.postGameTimer !== null) {
+        clearTimeout(this.postGameTimer)
+        this.postGameTimer = null
+      }
     },
     /** Called by the "Next game" button. A no-op if a game is already spectating or none is queued yet. */
     advanceToNextGame() {
@@ -223,9 +243,21 @@ export const useTournamentStore = defineStore('tournament', {
         }
       }
 
-      this.spectating = false
-      if (this.autoplay) this.advanceSpectateQueue()
-      this.tryFinishTournament()
+      const finishSpectating = () => {
+        this.postGameTimer = null
+        this.spectating = false
+        if (this.autoplay) this.advanceSpectateQueue()
+        this.tryFinishTournament()
+      }
+
+      // Autoplay would otherwise connect to the next game in the same tick the result arrives,
+      // tearing the finished board down before a viewer can read who won. Manual mode already
+      // holds on the finished board until the viewer clicks "Next game", so it skips the pause.
+      if (this.autoplay) {
+        this.postGameTimer = window.setTimeout(finishSpectating, POST_GAME_PAUSE_MS)
+      } else {
+        finishSpectating()
+      }
     },
     tryFinishTournament() {
       if (this.pendingFinalStandings && this.spectateQueue.length === 0 && !this.spectating) {

@@ -48,6 +48,18 @@ function resultLabel(game: (typeof tournamentStore.finishedGames)[number]): stri
   return `${nameFor(winnerId)} won`
 }
 
+// Banner shown over the board once the current game's result is in, naming the current game's
+// winner by color and bot name (e.g. "White (Territory Bot) won") rather than just the color the
+// below-board result line already gives.
+const currentResultLabel = computed(() => {
+  const result = matchStore.result
+  if (!result) return ''
+  if (!result.winner) return 'Draw'
+  const winnerId = result.winner === 'WHITE' ? tournamentStore.currentWhiteBotId : tournamentStore.currentBlackBotId
+  const colorLabel = result.winner === 'WHITE' ? 'White' : 'Black'
+  return `${colorLabel} (${nameFor(winnerId)}) won`
+})
+
 const nextGameLabel = computed(() => {
   if (tournamentStore.status === 'finished' && !tournamentStore.nextGameReady) return 'Tournament complete'
   if (tournamentStore.autoplay) return 'Autoplaying…'
@@ -81,7 +93,12 @@ function onAutoplayChange(event: Event) {
           <span class="bot-swatch" :style="{ background: colorFor(tournamentStore.currentBlackBotId) }"></span>
           <strong>{{ nameFor(tournamentStore.currentBlackBotId) }}</strong> (black)
         </p>
-        <AmazonsBoard :board="matchStore.board" :last-move="matchStore.lastMove" :anim="matchStore.anim" />
+        <div class="board-wrap">
+          <AmazonsBoard :board="matchStore.board" :last-move="matchStore.lastMove" :anim="matchStore.anim" />
+          <div v-if="matchStore.result" class="result-overlay">
+            <p class="result-overlay-text">{{ currentResultLabel }}</p>
+          </div>
+        </div>
         <p v-if="matchStore.result" class="match-result">
           {{ matchStore.result.winner ? `${matchStore.result.winner} wins` : 'Draw' }}
           ({{ matchStore.result.reason }}, {{ matchStore.result.totalPlies }} plies)
@@ -192,6 +209,36 @@ function onAutoplayChange(event: Event) {
   height: 10px;
   border-radius: 2px;
   flex: none;
+}
+.board-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.result-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  animation: result-overlay-in 200ms ease-out;
+}
+.result-overlay-text {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+}
+@keyframes result-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .match-result {
   margin: 0;
