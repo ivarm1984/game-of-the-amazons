@@ -11,6 +11,24 @@ export interface PlaybackTiming {
   settleMs: number
 }
 
+// Standard Amazons starting position (White: a4, d1, g1, j4 / Black: a7, d10, g10, j7),
+// seeded up front so the first move has a prior board to animate a departure from -
+// otherwise playMove() has no choice but to apply it in one silent jump.
+const STARTING_BOARD: BoardDto = {
+  rows: [
+    '...W..W...',
+    '..........',
+    '..........',
+    'W........W',
+    '..........',
+    '..........',
+    'B........B',
+    '..........',
+    '..........',
+    '...B..B...',
+  ],
+}
+
 const SPEED_STORAGE_KEY = 'amazons.playbackSpeed'
 const DEFAULT_TIMING: PlaybackTiming = {
   queenMs: 550,
@@ -103,7 +121,7 @@ export const useMatchStore = defineStore('match', {
     connect(matchId: string, options?: ConnectOptions) {
       this.disconnect()
       this.matchId = matchId
-      this.board = null
+      this.board = STARTING_BOARD
       this.moves = []
       this.result = null
       this.queue = []
