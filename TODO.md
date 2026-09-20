@@ -19,22 +19,33 @@ simulations than it gained in accuracy: roughly a 1-in-8 win rate against the te
 
 Not started - noted here as a direction, not a plan.
 
-## Finish verifying the Informed Monte Carlo rewrite
+## Informed Monte Carlo rewrite: verified (2026-09-20)
 
-The rewrite of `InformedMonteCarloBot` (early playout termination, one-pass root move ordering,
-sampled child expansion) was measured at **0.5-1s per move**, where it went 16-0 against Territory,
-Minimax Mobility, Greedy Mobility, plain MCTS, and its own previous implementation. Two gaps remain
-before those numbers can be trusted as a ranking:
+Both gaps left open after the rewrite are now closed. A head-to-head arena at the tournament's real
+`softMoveBudgetMs = 3000`, 8 games per pairing, alternating colors, 8 games in parallel, gave
+**80-0 across all ten pairings** - 4/4 as White and 4/4 as Black in every one:
 
-- **Never confirmed at the tournament's real 3s budget.** The 3s head-to-head run was killed by
-  system memory pressure before finishing a single pairing, so no win rates exist at that budget.
-  Only the throughput fix is confirmed there (opening simulations 309 -> 3740, visits on the chosen
-  move 8 -> 76). This matters because the design wins partly by buying more simulations, and a
-  longer budget hands the same gift to every opponent - the margin against Territory Bot could
-  compress. Rerun: 8+ games per pairing, alternating colors, at `softMoveBudgetMs = 3000`.
-- **Untested against the search bots**: Iterative Deepening, Alpha-Beta Master, Transposition
-  Alpha-Beta, Minimax King-Distance, Minimax Territory. These were simply not in the arena, not
-  found weak - Iterative Deepening was 2nd in the last tournament.
+| Opponent | W - L | | Opponent | W - L |
+| --- | --- | --- | --- | --- |
+| Territory | 8 - 0 | | Iterative Deepening | 8 - 0 |
+| Minimax Mobility | 8 - 0 | | Alpha-Beta Master | 8 - 0 |
+| Greedy Mobility | 8 - 0 | | Transposition Alpha-Beta | 8 - 0 |
+| Monte Carlo (plain) | 8 - 0 | | Minimax King-Distance | 8 - 0 |
+| previous Informed MCTS | 8 - 0 | | Minimax Territory | 8 - 0 |
+
+Two things this settles:
+
+- **The margin does not compress at the longer budget.** The worry was that the design wins partly by
+  buying more simulations, and that handing every opponent 3s instead of 0.5-1s would give the same
+  gift back. It does not: the 16-0 measured at the short budget became 80-0 at 3s.
+- **The search bots are not the exception.** They were untested, not found weak - Iterative Deepening
+  placed 2nd in the last tournament. All five lose every game, both colors.
+
+Practical note for anyone rerunning this: the arena needs a heap cap (`-Xmx8g` for 8 parallel games
+was comfortable; peak usage ran ~6.3GB). An earlier attempt at this run was killed by system memory
+pressure with no cap set. Each MCTS node holds the full legal move list of its position, so a 3s
+search at ~3700 simulations per move is genuinely memory-hungry, and 8 uncapped JVM heaps will take
+whatever the machine has. Wall time for the 80 games was 29 minutes on 12 cores.
 
 Note on methodology, learned here: a full round-robin gives each bot only ~9-11 games and the whole
 Elo table spans ~200 points, so neighbouring ranks are indistinguishable from noise. The standings
