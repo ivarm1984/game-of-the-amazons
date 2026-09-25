@@ -17,7 +17,11 @@ simulation, tens of thousands of times per move, so a finer evaluation only help
 Adding the existing `mobilityDiff` term to that call (two full move generations) cost far more in lost
 simulations than it gained in accuracy: roughly a 1-in-8 win rate against the territory-only version.
 
-Not started - noted here as a direction, not a plan.
+Partly done (2026-09-25): `TerritoryMonteCarloBot` has its own Lieberum-style evaluator
+(`bot/impl/mcts/TerritoryEvaluator.java`: t1/t2/c1/c2 blended by the contact measure w, plus a queen-liberty
+term) on a fast private board. `BoardEvaluator` and the alpha-beta bots still use the old blend; porting the
+evaluator to them is still open. Its weights are hand-set, not tuned - tuning them against the previous
+build is the obvious next step for that bot.
 
 ## Informed Monte Carlo rewrite: verified (2026-09-20)
 
@@ -52,3 +56,17 @@ Elo table spans ~200 points, so neighbouring ranks are indistinguishable from no
 that prompted this work put the bot 10th of 11 and gave no hint that the cause was a ~12x
 performance bug. Judge bot changes by direct head-to-head against the previous build, run in
 parallel across cores, not by tournament placing.
+
+## Territory Monte Carlo bot: verified (2026-09-25)
+
+`TerritoryMonteCarloBot` (`mcts-territory`) is playout-free MCTS: every leaf is scored once by a Lieberum-style
+evaluation and backed up as a win probability. It runs on `FastBoard`, a mutable padded board with `int`-packed
+moves and make/unmake, and keeps its tree in primitive arrays, so it gets ~80k simulations per 3s move in the
+opening and ~190k by mid-game, against ~3700 for Informed Monte Carlo. Same protocol as above: 3s budget, 8
+games per pairing, alternating colors, 8 in parallel - **80-0**, 4/4 as White and 4/4 as Black in every pairing,
+including against Informed Monte Carlo.
+
+Arena lesson learned here: run it on the default G1 collector, not `-XX:+UseParallelGC`. With ParallelGC a single
+stop-the-world full collection froze all 8 games at once, and every bot that happened to be on move was charged
+with an identical 3759ms `TIMEOUT` - a result that looks like a bot bug but is not. On G1 the longest of 784
+pauses was 198ms, well inside the runner's 500ms grace.
