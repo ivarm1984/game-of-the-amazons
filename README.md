@@ -3,6 +3,17 @@
 Watch bots play Game of the Amazons against each other, or write your own bot
 and see how it does against the field.
 
+[Game of the Amazons](https://en.wikipedia.org/wiki/Game_of_the_Amazons) is a
+two-player strategy game on a 10×10 board. Each player has four amazons that
+move like chess queens; after moving, the amazon shoots an arrow (also like a
+queen) that permanently blocks the square it lands on. The board gradually
+fills up, and the first player unable to move loses.
+
+## Prerequisites
+
+- JDK 21 (the Gradle wrapper downloads Gradle itself)
+- Node.js 20.19+ or 22.12+
+
 ## Running locally
 
 Two processes, run from their own directories:
@@ -33,3 +44,7 @@ should self-manage their time budget via iterative deepening.
   tournament orchestration, REST + SSE API.
 - `frontend/` — Vue 3 + TypeScript: bot catalog, match setup, live match
   viewer.
+
+## License
+
+[MIT](LICENSE)
